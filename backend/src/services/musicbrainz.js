@@ -110,7 +110,7 @@ export async function getArtist(mbid) {
   }
 
   return enqueueRequest(async () => {
-    const url = `${BASE_URL}/artist/${mbid}?fmt=json&inc=genres+areas+ratings`;
+    const url = `${BASE_URL}/artist/${mbid}?fmt=json&inc=genres+ratings`;
 
     try {
       const data = await fetchWithRetry(url);
@@ -147,7 +147,7 @@ export async function getArtistRecordings(mbid, limit = 100) {
   }
 
   return enqueueRequest(async () => {
-    const url = `${BASE_URL}/recording?artist=${mbid}&fmt=json&inc=artists+releases&limit=${limit}`;
+    const url = `${BASE_URL}/recording?artist=${mbid}&fmt=json&inc=artist-credits&limit=${limit}`;
 
     try {
       const data = await fetchWithRetry(url);
@@ -183,7 +183,7 @@ export async function getReleasesForRecording(recordingMbid) {
   }
 
   return enqueueRequest(async () => {
-    const url = `${BASE_URL}/release?recording=${recordingMbid}&fmt=json&inc=labels+areas&limit=50`;
+    const url = `${BASE_URL}/release?recording=${recordingMbid}&fmt=json&inc=labels&limit=50`;
 
     try {
       const data = await fetchWithRetry(url);
