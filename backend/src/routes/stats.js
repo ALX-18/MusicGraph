@@ -66,10 +66,11 @@ router.get('/top-collaborations', async (req, res, next) => {
 
     const cypher = `
       MATCH (a:Artist)-[c:COLLABORATED_WITH]->(b:Artist)
-      RETURN a, b, c.weight as weight
+      WITH a, b, c.weight as weight
       ORDER BY weight DESC
+      SKIP $offset
       LIMIT $limit
-      OFFSET $offset
+      RETURN a, b, weight
     `;
 
     const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
@@ -93,11 +94,11 @@ router.get('/top-artists', async (req, res, next) => {
 
     const cypher = `
       MATCH (a:Artist)
-      WITH a, size((a)--()) as degree
-      RETURN a, degree
+      WITH a, COUNT { (a)--() } as degree
       ORDER BY degree DESC
+      SKIP $offset
       LIMIT $limit
-      OFFSET $offset
+      RETURN a, degree
     `;
 
     const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
@@ -121,10 +122,10 @@ router.get('/top-genres', async (req, res, next) => {
     const cypher = `
       MATCH (:Artist)-[:ASSOCIATED_WITH_GENRE]->(g:Genre)
       WITH g, count(*) as count
-      RETURN g.name as name, count
       ORDER BY count DESC
+      SKIP $offset
       LIMIT $limit
-      OFFSET $offset
+      RETURN g.name as name, count
     `;
 
     const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
