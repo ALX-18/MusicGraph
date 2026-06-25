@@ -62,7 +62,7 @@ router.get('/overview', async (req, res, next) => {
 // GET /api/stats/top-collaborations
 router.get('/top-collaborations', async (req, res, next) => {
   try {
-    const { limit, offset } = parsePagination(req.query);
+    const { limitInt, offsetInt } = parsePagination(req.query);
 
     const cypher = `
       MATCH (a:Artist)-[c:COLLABORATED_WITH]->(b:Artist)
@@ -72,7 +72,7 @@ router.get('/top-collaborations', async (req, res, next) => {
       OFFSET $offset
     `;
 
-    const records = await runQuery(cypher, { limit, offset });
+    const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
 
     const results = records.map((rec) => ({
       a: toArtist(rec.get('a')),
@@ -89,7 +89,7 @@ router.get('/top-collaborations', async (req, res, next) => {
 // GET /api/stats/top-artists
 router.get('/top-artists', async (req, res, next) => {
   try {
-    const { limit, offset } = parsePagination(req.query);
+    const { limitInt, offsetInt } = parsePagination(req.query);
 
     const cypher = `
       MATCH (a:Artist)
@@ -100,7 +100,7 @@ router.get('/top-artists', async (req, res, next) => {
       OFFSET $offset
     `;
 
-    const records = await runQuery(cypher, { limit, offset });
+    const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
 
     const results = records.map((rec) => ({
       artist: toArtist(rec.get('a')),
@@ -116,7 +116,7 @@ router.get('/top-artists', async (req, res, next) => {
 // GET /api/stats/top-genres
 router.get('/top-genres', async (req, res, next) => {
   try {
-    const { limit, offset } = parsePagination(req.query);
+    const { limitInt, offsetInt } = parsePagination(req.query);
 
     const cypher = `
       MATCH (:Artist)-[:ASSOCIATED_WITH_GENRE]->(g:Genre)
@@ -127,7 +127,7 @@ router.get('/top-genres', async (req, res, next) => {
       OFFSET $offset
     `;
 
-    const records = await runQuery(cypher, { limit, offset });
+    const records = await runQuery(cypher, { limit: limitInt, offset: offsetInt });
 
     const results = records.map((rec) => ({
       name: rec.get('name'),

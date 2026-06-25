@@ -48,7 +48,7 @@ router.post('/artists', async (req, res, next) => {
     console.log(`[import] Fetching artiste ${mbid} from MusicBrainz...`);
     const artistData = await getArtist(mbid);
 
-    // 2. MERGE Artist + genres + area
+    // 2. MERGE Artist
     console.log(`[import] MERGE Artist ${mbid}...`);
     const mergeArtistCypher = `
       MERGE (a:Artist { mbid: $mbid })
@@ -59,21 +59,6 @@ router.post('/artists', async (req, res, next) => {
           a.beginDate = $beginDate,
           a.endDate = $endDate,
           a.disambiguation = $disambiguation
-      WITH a
-      OPTIONAL MATCH (a)-[r:ASSOCIATED_WITH_GENRE]->()
-      DELETE r
-      WITH a
-      UNWIND $genres as genreName
-      MERGE (g:Genre { name: genreName })
-      MERGE (a)-[:ASSOCIATED_WITH_GENRE]->(g)
-      WITH a
-      OPTIONAL MATCH (a)-[r:FROM_AREA]->()
-      DELETE r
-      WITH a
-      WHERE $areaName IS NOT NULL AND $areaMbid IS NOT NULL
-      MERGE (ar:Area { mbid: $areaMbid })
-      SET ar.name = $areaName, ar.type = $areaType
-      MERGE (a)-[:FROM_AREA]->(ar)
       RETURN a
     `;
 
@@ -88,15 +73,59 @@ router.post('/artists', async (req, res, next) => {
         beginDate: artistData.beginDate,
         endDate: artistData.endDate,
         disambiguation: artistData.disambiguation,
-        genres: artistData.genres || [],
-        areaName: artistData.area?.name || null,
-        areaMbid: artistData.area?.mbid || null,
-        areaType: artistData.area?.type || null,
       },
       { write: true }
     );
 
     const importedArtist = toArtist(artistRecords[0].get('a'));
+
+    // Clean genres
+    await runQuery(
+      `MATCH (a:Artist { mbid: $mbid })
+       OPTIONAL MATCH (a)-[r:ASSOCIATED_WITH_GENRE]->()
+       DELETE r`,
+      { mbid: artistData.mbid },
+      { write: true }
+    );
+
+    // Merge genres if any
+    const genres = artistData.genres || [];
+    if (genres.length > 0) {
+      await runQuery(
+        `MATCH (a:Artist { mbid: $mbid })
+         UNWIND $genres as genreName
+         MERGE (g:Genre { name: genreName })
+         MERGE (a)-[:ASSOCIATED_WITH_GENRE]->(g)`,
+        { mbid: artistData.mbid, genres },
+        { write: true }
+      );
+    }
+
+    // Clean area
+    await runQuery(
+      `MATCH (a:Artist { mbid: $mbid })
+       OPTIONAL MATCH (a)-[r:FROM_AREA]->()
+       DELETE r`,
+      { mbid: artistData.mbid },
+      { write: true }
+    );
+
+    // Merge area if exists
+    if (artistData.area?.mbid && artistData.area?.name) {
+      await runQuery(
+        `MATCH (a:Artist { mbid: $mbid })
+         MERGE (ar:Area { mbid: $areaMbid })
+         SET ar.name = $areaName, ar.type = $areaType
+         MERGE (a)-[:FROM_AREA]->(ar)`,
+        {
+          mbid: artistData.mbid,
+          areaMbid: artistData.area.mbid,
+          areaName: artistData.area.name,
+          areaType: artistData.area.type || null,
+        },
+        { write: true }
+      );
+    }
 
     // 3. Fetch recordings + create Recording nodes + relations
     console.log(`[import] Fetching recordings pour ${mbid}...`);
@@ -272,7 +301,10 @@ router.post('/artists', async (req, res, next) => {
       collaborationCount++;
       const createCollabCypher = `
         MATCH (a:Artist { mbid: $mbid }), (ca:Artist { mbid: $collabMbid })
-        MERGE (a)-[c:COLLABORATED_WITH]->(ca)
+        WITH a, ca,
+             CASE WHEN a.mbid < ca.mbid THEN a ELSE ca END as first,
+             CASE WHEN a.mbid < ca.mbid THEN ca ELSE a END as second
+        MERGE (first)-[c:COLLABORATED_WITH]->(second)
         SET c.weight = coalesce(c.weight, 0) + 1
       `;
 
