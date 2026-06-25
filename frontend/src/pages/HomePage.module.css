@@ -1,0 +1,63 @@
+.hero {
+  text-align: center;
+  padding: var(--space-8) var(--space-4) var(--space-6);
+}
+
+.title {
+  font-size: 2.6rem;
+  margin-bottom: var(--space-3);
+  background: linear-gradient(90deg, var(--node-artist), var(--node-recording));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.lead {
+  max-width: 640px;
+  margin: 0 auto var(--space-5);
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+
+.featureCard {
+  display: block;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.featureCard:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.featureIcon {
+  font-size: 1.8rem;
+  margin-bottom: var(--space-2);
+}
+
+.featureTitle {
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.featureDesc {
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+}

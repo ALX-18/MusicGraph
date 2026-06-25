@@ -1,0 +1,55 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.modes {
+  display: inline-flex;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.mode {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.mode:hover {
+  color: var(--color-text);
+}
+
+.modeActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.neighborInput {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.85rem;
+  min-width: 220px;
+}
+
+.graphWrap {
+  height: 620px;
+}
+
+.count {
+  color: var(--color-text-faint);
+  font-size: 0.8rem;
+  margin-left: auto;
+}
