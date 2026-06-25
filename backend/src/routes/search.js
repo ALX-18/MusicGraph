@@ -8,14 +8,24 @@
 // Helpers réutilisables déjà dispos : aucun appel DB ici (résultats à la volée).
 // Utilise process.env.MUSICBRAINZ_BASE_URL et MUSICBRAINZ_USER_AGENT (User-Agent OBLIGATOIRE).
 import { Router } from 'express';
+import { searchArtist } from '../services/musicbrainz.js';
 
 const router = Router();
 
 // GET /api/search/artists?q=
-router.get('/artists', (req, res) => {
-  // TODO(Josué): appeler MusicBrainz /ws/2/artist?query=...&fmt=json,
-  // mapper vers ArtistSearchResult[], gérer le rate-limit (1 req/s) et le User-Agent.
-  res.status(501).json({ error: 'Not Implemented — /api/search/artists (Josué)' });
+router.get('/artists', async (req, res, next) => {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.trim().length === 0) {
+      return res.status(400).json({ error: 'Paramètre "q" obligatoire (min 1 char)' });
+    }
+
+    const results = await searchArtist(q);
+    res.json(results);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;
