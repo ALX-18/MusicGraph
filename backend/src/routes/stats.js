@@ -22,37 +22,28 @@ const router = Router();
 // GET /api/stats/overview
 router.get('/overview', async (req, res, next) => {
   try {
+    // Neo4j 5 : COUNT { MATCH ... } subqueries dans un seul RETURN (pas de MATCH chaînés).
     const cypher = `
-      MATCH (a:Artist)
-      WITH count(a) as artists
-      MATCH (r:Recording)
-      WITH artists, count(r) as recordings
-      MATCH (rel:Release)
-      WITH artists, recordings, count(rel) as releases
-      MATCH (g:Genre)
-      WITH artists, recordings, releases, count(g) as genres
-      MATCH ()-[c:COLLABORATED_WITH]->()
-      RETURN artists, recordings, releases, genres, count(c) as collaborations
+      RETURN
+        COUNT { MATCH (a:Artist) }              AS artists,
+        COUNT { MATCH (r:Recording) }           AS recordings,
+        COUNT { MATCH (rel:Release) }           AS releases,
+        COUNT { MATCH (g:Genre) }               AS genres,
+        COUNT { MATCH ()-[:COLLABORATED_WITH]->() } AS collaborations
     `;
 
     const records = await runQuery(cypher);
     if (records.length === 0) {
-      return res.json({
-        artists: 0,
-        recordings: 0,
-        releases: 0,
-        collaborations: 0,
-        genres: 0,
-      });
+      return res.json({ artists: 0, recordings: 0, releases: 0, collaborations: 0, genres: 0 });
     }
 
     const rec = records[0];
     res.json({
-      artists: toNumber(rec.get('artists')),
-      recordings: toNumber(rec.get('recordings')),
-      releases: toNumber(rec.get('releases')),
+      artists:        toNumber(rec.get('artists')),
+      recordings:     toNumber(rec.get('recordings')),
+      releases:       toNumber(rec.get('releases')),
       collaborations: toNumber(rec.get('collaborations')),
-      genres: toNumber(rec.get('genres')),
+      genres:         toNumber(rec.get('genres')),
     });
   } catch (err) {
     next(err);
@@ -64,9 +55,10 @@ router.get('/top-collaborations', async (req, res, next) => {
   try {
     const { limitInt, offsetInt } = parsePagination(req.query);
 
+    // WITH ... ORDER BY ... SKIP ... LIMIT ... RETURN : ordre correct Neo4j 5.
     const cypher = `
       MATCH (a:Artist)-[c:COLLABORATED_WITH]->(b:Artist)
-      WITH a, b, c.weight as weight
+      WITH a, b, c.weight AS weight
       ORDER BY weight DESC
       SKIP $offset
       LIMIT $limit
@@ -92,9 +84,10 @@ router.get('/top-artists', async (req, res, next) => {
   try {
     const { limitInt, offsetInt } = parsePagination(req.query);
 
+    // COUNT { MATCH (a)-[]-() } : syntaxe subquery explicite Neo4j 5 pour le degré.
     const cypher = `
       MATCH (a:Artist)
-      WITH a, COUNT { (a)--() } as degree
+      WITH a, COUNT { MATCH (a)-[]-() } AS degree
       ORDER BY degree DESC
       SKIP $offset
       LIMIT $limit
