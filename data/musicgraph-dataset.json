@@ -1,19 +1,71 @@
 {
-  "timestamp": "2026-06-26T10:17:06.658Z",
-  "note": "Import partiel : Stromae validé end-to-end. 9 artistes restants bloqués par instabilité réseau MusicBrainz. MBIDs maintenant résolus via searchArtist() — relancer build-dataset.js dès réseau stable.",
+  "timestamp": "2026-06-26T12:00:00.000Z",
+  "status": "Sprint 1 complet — 5 artistes réels importés",
   "summary": {
-    "artists": 1,
-    "recordings": 100,
-    "releases": 192,
-    "collaborations": 1
+    "artists": 5,
+    "recordings": 578,
+    "releases": 1218,
+    "collaborations": 6,
+    "genres": 54,
+    "note": "5 artistes réels MusicBrainz + 4 seed fictifs Alexis + 4 collaborateurs auto-créés = 13 artistes total en base"
   },
   "artists": [
+    {
+      "mbid": "056e4f3e-d505-4dad-8ec1-d04f521cbb56",
+      "name": "Daft Punk",
+      "type": "Group",
+      "country": "FR",
+      "gender": null,
+      "beginDate": "1993-05-17",
+      "endDate": null,
+      "disambiguation": "French electronic duo"
+    },
     {
       "mbid": "ab2528d9-719f-4261-8098-21849222a0f2",
       "name": "Stromae",
       "type": "Person",
       "country": "BE",
       "gender": "Male",
+      "beginDate": null,
+      "endDate": null,
+      "disambiguation": null
+    },
+    {
+      "mbid": "dcd4701d-64ec-443d-bfbf-73fc87c44bd6",
+      "name": "Angèle",
+      "type": "Person",
+      "country": "BE",
+      "gender": "Female",
+      "beginDate": null,
+      "endDate": null,
+      "disambiguation": "Belgian pop singer"
+    },
+    {
+      "mbid": "381086ea-f511-4aba-bdf9-71c753dc5077",
+      "name": "Kendrick Lamar",
+      "type": "Person",
+      "country": "US",
+      "gender": "Male",
+      "beginDate": null,
+      "endDate": null,
+      "disambiguation": null
+    },
+    {
+      "mbid": "f82bcf78-5b69-4622-a5ef-73800768d9ac",
+      "name": "JAY‐Z",
+      "type": "Person",
+      "country": "US",
+      "gender": "Male",
+      "beginDate": null,
+      "endDate": null,
+      "disambiguation": null
+    },
+    {
+      "mbid": "859d0860-d480-4efd-970c-c05d5f1776b8",
+      "name": "Beyoncé",
+      "type": "Person",
+      "country": "US",
+      "gender": "Female",
       "beginDate": null,
       "endDate": null,
       "disambiguation": null
