@@ -1,6 +1,6 @@
 # Rapport — Josué · Sprint 1 (MusicBrainz Integration & Data Analysis)
 
-**Branche** : `feat/musicbrainz-data` · **Dates** : Sprint 1 · **Status** : Implémentation complète, tests à exécuter.
+**Branche** : `feat/musicbrainz-data` · **Dates** : Sprint 1 · **Status** : Implémentation complète, import Stromae validé end-to-end.
 
 ---
 
@@ -104,46 +104,46 @@ getReleases(filter)          // → [{mbid, title, ...}]
 
 #### 4. Routes Stats
 
+Résultats réels mesurés après import de Stromae (MusicBrainz) + seed Alexis :
+
 **GET /api/stats/overview**
 ```json
-{
-  "artists": 42,
-  "recordings": 312,
-  "releases": 564,
-  "collaborations": 28,
-  "genres": 15
-}
+{ "artists": 6, "recordings": 103, "releases": 194, "collaborations": 4, "genres": 8 }
 ```
 
-**GET /api/stats/top-collaborations** (paginated)
+**GET /api/stats/top-collaborations**
 ```json
 [
-  {
-    "a": { "mbid": "...", "name": "Artist A", ... },
-    "b": { "mbid": "...", "name": "Artist B", ... },
-    "weight": 5
-  },
-  ...
+  { "a": { "name": "Mona Reyes" }, "b": { "name": "DJ Cipher" }, "weight": 5 },
+  { "a": { "name": "The Aurora" }, "b": { "name": "Mona Reyes" }, "weight": 3 },
+  { "a": { "name": "The Aurora" }, "b": { "name": "DJ Cipher" }, "weight": 1 },
+  { "a": { "name": "Tove Lo" }, "b": { "name": "Stromae" }, "weight": 1 }
 ]
 ```
 
-**GET /api/stats/top-artists** (par degré)
+**GET /api/stats/top-artists** (par degré de connexion)
 ```json
 [
-  {
-    "artist": { "mbid": "...", "name": "Daft Punk", ... },
-    "degree": 18
-  },
-  ...
+  { "artist": { "name": "Stromae", "country": "BE" }, "degree": 107 },
+  { "artist": { "name": "The Aurora", "country": "GB" }, "degree": 6 },
+  { "artist": { "name": "Mona Reyes", "country": "US" }, "degree": 6 },
+  { "artist": { "name": "DJ Cipher", "country": "US" }, "degree": 4 },
+  { "artist": { "name": "Tove Lo" }, "degree": 2 },
+  { "artist": { "name": "Lone Pioneer" }, "degree": 0 }
 ]
 ```
 
 **GET /api/stats/top-genres**
 ```json
 [
-  { "name": "Electronic", "count": 8 },
-  { "name": "Hip hop", "count": 5 },
-  ...
+  { "name": "rock", "count": 1 },
+  { "name": "electronic", "count": 1 },
+  { "name": "hip-hop", "count": 1 },
+  { "name": "art pop", "count": 1 },
+  { "name": "dance-pop", "count": 1 },
+  { "name": "electro house", "count": 1 },
+  { "name": "electropop", "count": 1 },
+  { "name": "hip house", "count": 1 }
 ]
 ```
 
@@ -315,41 +315,45 @@ Aucun ajout prévu, mais si Nicolas demande (ex: `source` sur Recording), ça vi
 ## Qualité des Données
 
 ### Doublons
-**Vérification** (à exécuter après `build-dataset.js`) :
+Vérification exécutée sur Neo4j Browser après import de Stromae :
 ```cypher
 MATCH (a:Artist)
-WITH a.mbid, count(*) as cnt
+WITH a.mbid, count(*) AS cnt
 WHERE cnt > 1
 RETURN a.mbid, cnt;
 ```
-**Attendu** : 0 résultats (MERGE sur mbid évite doublons).
+**Résultat : 0 lignes** — aucun doublon. MERGE sur `mbid` fonctionne correctement.
 
 ### Collaborations Détectées
-**Vérification** :
 ```cypher
 MATCH (a:Artist)-[c:COLLABORATED_WITH]->(b:Artist)
 RETURN a.name, b.name, c.weight
-ORDER BY c.weight DESC
-LIMIT 10;
+ORDER BY c.weight DESC;
 ```
-**Attendu** : au moins 10-20 relations (dépend seed, genres).
+**Résultat : 4 relations** (3 seed + 1 réelle MB : Tove Lo ↔ Stromae, weight=1). Aucune relation miroir A→B + B→A.
+
+### Import Stromae (Import Réel Validé)
+- 100 recordings importés depuis MusicBrainz
+- ~192 releases liées
+- 1 collaboration détectée (Tove Lo, via joinphrase feat.)
+- Ré-import idempotent confirmé (2e import → 0 doublons, uniquement SET)
 
 ### Appels MusicBrainz
-**Logs console** : chaque requête logge `[MB] ...` avec timing.
-**Total** : ~500-1000 requêtes pour 10 artistes (recordings + releases + retries).
-**Rate limit respecté** : délai 1100ms visible dans logs.
+Rate limit respecté : délai 1100ms entre requêtes, logs `[MB]` visibles en console.
+Total pour Stromae : ~100 requêtes (1 getArtist + 1 getArtistRecordings + ~100 getReleasesForRecording).
 
 ---
 
 ## Bloqué / À Discuter
 
-### Test du Code
-**Status** : Syntaxe vérifiée (✓ `node -c`). Exécution runtime : à faire avec Docker + Neo4j.
+### Import 10 Artistes Seed
+**Status** : Stromae importé (1/10). Les 9 autres bloqués par instabilité réseau MusicBrainz (SSL errors intermittentes côté Node.js fetch).
 
-**Blockers potentiels** :
-1. **Neo4j port** : si 7687 pris, adapter `.env`.
-2. **MusicBrainz timeout** : rate limit adapté mais si très lent, augmenter backoff delayMs.
-3. **Dataset artistiques** : seed MBID réels ; si l'un échoue, message clair, continue aux autres.
+**Fix apporté** : `build-dataset.js` utilise maintenant `searchArtist()` pour résoudre les MBIDs au runtime — les MBIDs hardcodés initiaux retournaient tous HTTP 404.
+
+**Blockers** :
+1. Réseau MusicBrainz intermittent (SSL / fetch failed côté Node.js, OK côté browser).
+2. ANALYSE_DATA.md rempli avec stats réelles du dataset partiel (Stromae + seed).
 
 ### Direction COLLABORATED_WITH à Trancher
 Créée unidirectionnelle pour simplicité. Discuter si bidirectionnel préféré (impacte dédup graphe front).
@@ -446,13 +450,14 @@ MATCH ()-[c:COLLABORATED_WITH]->() RETURN a.name, b.name, c.weight ORDER BY weig
 ✓ **Implémentation complète** : client MB, routes search/import/stats, script dataset.
 ✓ **Rate limit + retry** : respecte MusicBrainz policy.
 ✓ **Détection collaborations** : regex patterns, weight tracking.
-✓ **Idempotence** : ré-importer = update, pas doublons.
-✓ **Documentation** : DATA_MODEL.md (mapping), ANALYSE_DATA.md (template).
+✓ **Idempotence** : ré-importer Stromae 2x → 0 doublons, confirmé Neo4j Browser.
+✓ **Import réel validé** : Stromae — 100 recordings, ~192 releases, 1 collab (Tove Lo).
+✓ **Documentation** : DATA_MODEL.md (mapping), ANALYSE_DATA.md (stats réelles Neo4j).
+✓ **build-dataset.js** : MBIDs résolus via searchArtist() au runtime (plus de 404).
 
 **Prochaines étapes** :
-1. Exécuter instructions vérification (test endpoints + build-dataset).
-2. Remplir ANALYSE_DATA.md avec vraies stats Neo4j.
-3. Valider avec Nicolas (formes JSON) + Alexis (aucune conflict).
+1. Relancer `build-dataset.js` dès réseau MusicBrainz stable (9 artistes restants).
+2. Mettre à jour ANALYSE_DATA.md avec stats finales (10 artistes).
 
 **Estimation Sprint 2** : Tests auto + optimisations + enrichissement données.
 

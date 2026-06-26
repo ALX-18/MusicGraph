@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { getDriver, waitForNeo4j, runQuery, closeDriver } from '../src/db/neo4j.js';
 import { toArtist } from '../src/utils/mappers.js';
 import {
+  searchArtist,
   getArtist,
   getArtistRecordings,
   getReleasesForRecording,
@@ -19,19 +20,27 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, '..', '..', 'data');
 
-// Seed artistes (MusicBrainz MBID réels si possible, sinon seed comme dans contract)
+// Noms des artistes seed — MBIDs résolus via searchArtist au runtime pour éviter les 404.
 const SEED_ARTISTS = [
-  { mbid: '9cb110b5-52e6-4d4e-b0be-40e6cea2910a', name: 'Daft Punk' },
-  { mbid: '85c85e73-5719-486b-9b22-31d03d2642b8', name: 'Stromae' },
-  { mbid: 'c646d4b0-b641-40d1-8c13-7e1b3cc381d0', name: 'Angèle' },
-  { mbid: '95e1ead9-4d31-4808-a7e0-2e4528338023', name: 'PNL' },
-  { mbid: '99fd2c9d-3bf5-4f76-b2a9-d95cee9e3e87', name: 'Damso' },
-  { mbid: '8888b58c-58ca-4270-82ec-cddcb1b8305f', name: 'SCH' },
-  { mbid: '51688157-4d1a-4d8d-bbee-1dbe5c4d3b9d', name: 'Ninho' },
-  { mbid: 'd7a26234-91ff-3e78-c0a5-5c405b2c4b1c', name: 'Kendrick Lamar' },
-  { mbid: '4300e7a1-b925-4519-b575-446bdc183d37', name: 'Jay-Z' },
-  { mbid: '6eef4389-6ccc-4a57-97bf-60a878e28534', name: 'Beyoncé' },
+  { name: 'Daft Punk' },
+  { name: 'Stromae' },
+  { name: 'Angèle' },
+  { name: 'PNL' },
+  { name: 'Damso' },
+  { name: 'SCH' },
+  { name: 'Ninho' },
+  { name: 'Kendrick Lamar' },
+  { name: 'Jay-Z' },
+  { name: 'Beyoncé' },
 ];
+
+async function resolveMbid(name) {
+  const results = await searchArtist(name);
+  if (!results || results.length === 0) throw new Error(`Aucun résultat MB pour "${name}"`);
+  const top = results[0];
+  console.log(`  → ${name} → MBID ${top.mbid} (score=${top.score})`);
+  return top.mbid;
+}
 
 async function main() {
   try {
@@ -46,6 +55,10 @@ async function main() {
 
     for (const seedArtist of SEED_ARTISTS) {
       try {
+        console.log(`  → Résoudre MBID : ${seedArtist.name}...`);
+        const mbid = await resolveMbid(seedArtist.name);
+        seedArtist.mbid = mbid;
+
         console.log(`  → Importer ${seedArtist.name} (${seedArtist.mbid})...`);
 
         const artistData = await getArtist(seedArtist.mbid);

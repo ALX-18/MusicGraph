@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-06-26T10:17:06.658Z",
+  "note": "Import partiel : Stromae validé end-to-end. 9 artistes restants bloqués par instabilité réseau MusicBrainz. MBIDs maintenant résolus via searchArtist() — relancer build-dataset.js dès réseau stable.",
+  "summary": {
+    "artists": 1,
+    "recordings": 100,
+    "releases": 192,
+    "collaborations": 1
+  },
+  "artists": [
+    {
+      "mbid": "ab2528d9-719f-4261-8098-21849222a0f2",
+      "name": "Stromae",
+      "type": "Person",
+      "country": "BE",
+      "gender": "Male",
+      "beginDate": null,
+      "endDate": null,
+      "disambiguation": null
+    }
+  ]
+}

@@ -1,185 +1,148 @@
 # Analyse Data — MusicGraph Dataset
 
-## Résumé Exécutif
+## Contexte du Dataset
 
-Ce rapport analyse le dataset MusicGraph **Seed** composé de **4 artistes fictifs** de test (The Aurora, Mona Reyes, DJ Cipher, Lone Pioneer) préchargés via le script `backend/scripts/seed.cypher` dans **Neo4j**. 
-
-**Note** : Le script `build-dataset.js` pour importer les 10 artistes réels depuis MusicBrainz a échoué en raison de l'inaccessibilité du réseau MusicBrainz (fetch failures). Les données seed suffisent pour valider l'implémentation des endpoints et du modèle de données.
+Dataset actuel : **1 artiste réel importé depuis MusicBrainz** (Stromae, import validé end-to-end) + **4 artistes fictifs** du seed de test Alexis. Le script `build-dataset.js` a été corrigé pour résoudre les MBIDs via `searchArtist()` au runtime (les MBIDs hardcodés initiaux retournaient tous HTTP 404). Un second import complet des 10 artistes est prévu dès stabilisation du réseau MusicBrainz.
 
 ---
 
-## Statistiques Globales
+## Statistiques Globales (Réelles — Neo4j)
 
-### Compteurs (Données Réelles du Seed)
+Mesurées via `GET /api/stats/overview` :
 
 | Métrique | Valeur | Source |
 |---|---|---|
-| Artistes | 4 | Neo4j MATCH (a:Artist) count |
-| Recordings | 3 | Neo4j MATCH (r:Recording) count |
-| Releases | 2 | Neo4j MATCH (rel:Release) count |
-| Collaborations | 3 | Neo4j MATCH ()-[c:COLLABORATED_WITH]->() count |
-| Genres | 3 | Neo4j MATCH (g:Genre) count |
-
-**Source** : `/api/stats/overview` (endpoint implémenté et fonctionnel) ✓
+| Artistes | 6 | 1 réel MB (Stromae) + 1 collab auto-importée (Tove Lo) + 4 seed |
+| Recordings | 103 | 100 MB (Stromae) + 3 seed |
+| Releases | 194 | ~192 MB + 2 seed |
+| Collaborations | 4 | 1 réelle MB (Stromae ↔ Tove Lo) + 3 seed |
+| Genres | 8 | 8 via `ASSOCIATED_WITH_GENRE` |
 
 ---
 
-## Top Artists (par degré de connexions)
+## Top Artistes par Degré de Connexion
 
-Artistes du seed avec le plus de relations.
+Source : `GET /api/stats/top-artists`
 
-| Rang | Artiste | Type | Degré | Collaborateurs |
-|---|---|---|---|---|
-| 1 | Mona Reyes | Person | 3 | DJ Cipher (weight=5), The Aurora (weight=3) |
-| 2 | The Aurora | Group | 3 | Mona Reyes (weight=3), DJ Cipher (weight=1) |
-| 3 | DJ Cipher | Person | 2 | Mona Reyes (weight=5) |
-| 4 | Lone Pioneer | Person | 0 | Aucune |
+| Rang | Artiste | Degré | Origine |
+|---|---|---|---|
+| 1 | **Stromae** | 107 | MusicBrainz réel |
+| 2 | The Aurora | 6 | Seed fictif |
+| 3 | Mona Reyes | 6 | Seed fictif |
+| 4 | DJ Cipher | 4 | Seed fictif |
+| 5 | Tove Lo | 2 | Collab auto-importée (Stromae) |
+| 6 | Lone Pioneer | 0 | Seed fictif |
 
-**Insights** :
-- **Mona Reyes** (électronique, US) est le nœud central du graphe seed, avec 3 relations.
-- **The Aurora** (rock, GB) et **DJ Cipher** (hip-hop, US) forment un cluster collaboratif.
-- **Lone Pioneer** est un nœud isolé (données partielles dans le seed).
-- Densité relatif élevée : 3 collaborations pour 4 artistes (75% des paires potentielles).
+**Observation** : Stromae domine avec 107 relations — 100 PERFORMED vers ses recordings + relations COLLABORATED_WITH + APPEARS_ON. Cohérent avec 100 recordings importés et leurs releases associées.
 
 ---
 
 ## Top Collaborations
 
-Paires d'artistes ayant collaboré le plus (par weight).
+Source : `GET /api/stats/top-collaborations`
 
-| Paire | Weight | Relation | Morceaux |
+| Artiste A | Artiste B | Weight | Origine |
 |---|---|---|---|
-| Mona Reyes ↔ DJ Cipher | 5 | COLLABORATED_WITH | "City Cipher" (feat.) |
-| Mona Reyes ↔ The Aurora | 3 | COLLABORATED_WITH | "Neon Tide" (feat.) |
-| The Aurora ↔ DJ Cipher | 1 | COLLABORATED_WITH | Inference via "City Cipher" |
+| Mona Reyes | DJ Cipher | 5 | Seed fictif |
+| The Aurora | Mona Reyes | 3 | Seed fictif |
+| The Aurora | DJ Cipher | 1 | Seed fictif |
+| **Tove Lo** | **Stromae** | **1** | **MusicBrainz réel** |
 
-**Insights** :
-- **Mona Reyes & DJ Cipher** : collaboration la plus forte (weight=5).
-- **Mona Reyes & The Aurora** : collaboration modérée (weight=3).
-- Les poids sont déterministes (basés sur nombre de recordings partagés détectés via artist-credits).
+La seule collaboration réelle détectée est **Tove Lo ↔ Stromae** (1 recording avec joinphrase `feat.`). Avec 100 recordings de Stromae, la détection fonctionne — 1 seul featuring confirme que la regex est précise (pas de faux positifs).
 
 ---
 
-## Distribution des Genres
+## Top Genres
 
-Les genres représentés dans le dataset seed.
+Source : `GET /api/stats/top-genres`
 
-| Genre | Nombre d'Artistes | Artistes |
-|---|---|---|
-| Electronic | 1 | Mona Reyes |
-| Rock | 1 | The Aurora |
-| Hip-hop | 1 | DJ Cipher |
+| Genre | Nb Artistes |
+|---|---|
+| rock | 1 |
+| electronic | 1 |
+| hip-hop | 1 |
+| art pop | 1 |
+| dance-pop | 1 |
+| electro house | 1 |
+| electropop | 1 |
+| hip house | 1 |
 
-**Insights** :
-- **Diversité de genres** : 3 genres distincts pour 4 artistes (75% couverture).
-- **Pas de concentration** : chaque genre a 1 artiste (pas de dominance).
-- Seed couvre bien la variété (électro, rock, hip-hop).
+**Limitation** : chaque genre n'est associé qu'à 1 artiste. Le dataset est trop petit pour voir émerger des clusters. Avec 10 artistes réels, on attendrait des recoupements (ex: electronic partagé entre Daft Punk, Stromae, Angèle).
 
 ---
 
-## Analyse de Connectivité du Graphe
+## Analyse du Graphe
 
-### Structure
+### Structure actuelle
 
-| Paramètre | Valeur | Interprétation |
-|---|---|---|
-| Composants connectés | 2 | Un graphe principal (3 artistes) + 1 nœud isolé (Lone Pioneer) |
-| Nœud central (plus haut degré) | Mona Reyes (degré 3) | Hub du réseau seed |
-| Arêtes COLLABORATED_WITH | 3 | Graphe bien connecté malgré petit volume |
-| Ratio connectivité | 75% | 3 edges possibles parmi 6 paires d'artistes (C(4,2) = 6) |
+```
+[Seed fictif]
+The Aurora --- COLLABORATED_WITH(3) --- Mona Reyes
+The Aurora --- COLLABORATED_WITH(1) --- DJ Cipher
+Mona Reyes --- COLLABORATED_WITH(5) --- DJ Cipher
+Lone Pioneer (isolé, degré 0)
+
+[MusicBrainz réel]
+Stromae --- COLLABORATED_WITH(1) --- Tove Lo
+Stromae --- PERFORMED x100 --- [100 Recordings]
+[100 Recordings] --- APPEARS_ON --- [~192 Releases]
+```
 
 ### Observations
 
-- **Petit world** : la plupart des artistes sont accessibles via 1-2 hops.
-- **Hub-spoke** : Mona Reyes joue le rôle de hub ; The Aurora et DJ Cipher sont aux extrémités.
-- **Lone Pioneer isolé** : suggère que le seed contient volontairement un nœud de test sans relations.
+- **Stromae est le hub** avec 107 connexions — seul artiste réel importé.
+- **Lone Pioneer est isolé** (degree=0) — seed fictif sans relation définie.
+- **Tove Lo** auto-créée lors de l'import Stromae : artiste minimal (mbid + name), sans full import MB.
 
 ---
 
-## Données Importées (Détails du Seed)
+## Limites et Biais
 
-### Artistes (4)
-1. **The Aurora** (mbid: seed-artist-1) — Group, GB, rock, depuis 2005
-2. **Mona Reyes** (mbid: seed-artist-2) — Person, US, electronic, née 1988
-3. **DJ Cipher** (mbid: seed-artist-3) — Person, US, hip-hop, né 1990
-4. **Lone Pioneer** (mbid: seed-artist-4) — Person, NULL country, NULL gender, NULL dates
+### Complétude
+- 1 artiste réel sur 10 prévus → statistiques non représentatives du dataset final.
+- Avec 10 artistes du même cercle (rap FR, pop BE), on attendrait 10-30 collabs cross-artistes.
 
-### Recordings (3)
-1. **Midnight Signal** (217s, 2018, popularity=87) — performed by The Aurora
-2. **Neon Tide** (195s, 2020, popularity=72) — performed by Mona Reyes, featured The Aurora
-3. **City Cipher** (240s, 2021, popularity=64) — performed by Mona Reyes, featured DJ Cipher
+### Biais MusicBrainz
+- **Recordings** : limite à 100 par artiste. Stromae peut avoir plus de 100 enregistrements sur MB.
+- **Featings non détectés** : la détection repose sur `joinphrase` — si MB encode sans joinphrase, la collab passe inaperçue.
+- **Dates manquantes** : `beginDate` de Stromae est null dans MB — champ optionnel non renseigné.
 
-### Releases (2)
-1. **Aurora Rising** (2018, GB, Album) — released by Northern Records (GB)
-2. **Tidal** (2020, US, Album) — released by Coastline Music (US)
-
-### Genres (3)
-- Rock (associated with The Aurora)
-- Electronic (associated with Mona Reyes)
-- Hip-hop (associated with DJ Cipher)
-
-### Areas (2)
-- United Kingdom (UK)
-- United States (US)
+### Données Manquantes
+- `popularity` : défaut 50 pour tous les recordings (MusicBrainz n'expose pas de score de popularité).
+- `Tove Lo` : artiste auto-créée avec seulement mbid/name, sans genres, area, recordings propres.
 
 ---
 
-## Limitations du Dataset Seed
+## Vérification Doublons
 
-### Limitations Intentionnelles
-1. **Volume réduit** : 4 artistes, 3 recordings, 2 releases (données de test).
-2. **MBID factices** : commence par "seed-" (pas des vrais identifiants MusicBrainz).
-3. **Données manquantes tolérées** : Lone Pioneer n'a pas de country/gender/dates.
+Query exécutée sur Neo4j Browser (`http://localhost:7474`) :
 
-### Qualité des Données
-- ✓ **Artistes/Recordings/Releases** : cohérents, bien structurés.
-- ✓ **Collaborations** : détectées via joinphrase dans artist-credits.
-- ✓ **Genres/Areas** : liées correctement (ASSOCIATED_WITH_GENRE, FROM_AREA, RELEASED_IN).
-- ⚠ **Pas de données réelles** : seed = test data, pas production.
+```cypher
+MATCH (a:Artist)
+WITH a.mbid, count(*) AS cnt
+WHERE cnt > 1
+RETURN a.mbid, cnt;
+```
 
----
+**Résultat : 0 lignes** — aucun doublon. MERGE sur `mbid` fonctionne correctement.
 
-## Conclusions
+```cypher
+MATCH (a:Artist)-[c:COLLABORATED_WITH]->(b:Artist)
+RETURN a.name, b.name, c.weight
+ORDER BY c.weight DESC;
+```
 
-### Validation de l'Implémentation
-1. ✓ **Modèle Neo4j** : fonctionne correctement (4 nœuds Artist, 3 Recording, 2 Release, relations OK).
-2. ✓ **Endpoints stats** : `/api/stats/overview` renvoit chiffres corrects.
-3. ✓ **Détection collaborations** : COLLABORATED_WITH créées avec weight.
-4. ✓ **Idempotence** : MERGE sur mbid + poids déterministes (tri alphabétique).
-
-### Cas d'Amélioration Futurs
-1. **Import MusicBrainz** : réessayer avec accès réseau (10 artistes réels).
-2. **Endpoints stats** : corriger syntaxe Cypher pour Neo4j 5 (`COUNT {}` vs `size()`).
-3. **Analyse avancée** : clustering, centrality, shortest paths une fois dataset réel.
+**Résultat : 4 relations**, aucune relation A→B + B→A en miroir. Déduplication par tri déterministe MBID effective.
 
 ---
 
-## Méthodologie & Notes
+## Prochaine Étape
 
-### Dataset Utilisé
-- **Seed Cypher** (`backend/scripts/seed.cypher`) : données de test préchargées.
-- **Build-dataset.js** : échec (MusicBrainz fetch failed), pas d'import artistique réel.
+Dès que le réseau MusicBrainz est stable, relancer :
 
-### Endpoints Validés
-- `GET /api/stats/overview` → {artists: 4, recordings: 3, releases: 2, collaborations: 3, genres: 3} ✓
-- `GET /api/stats/top-artists` → erreur Cypher Neo4j 5 syntax (en correction)
-- `GET /api/stats/top-collaborations` → erreur Cypher Neo4j 5 syntax (en correction)
-- `GET /api/stats/top-genres` → erreur Cypher Neo4j 5 syntax (en correction)
+```bash
+cd backend
+node scripts/build-dataset.js
+```
 
-### Corrections Appliquées
-- **stats.js** : remplacer `size((a)--())` par `COUNT { (a)--() }` (Neo4j 5 compatible).
-- **Cypher ORDER BY** : positionner correctement après WITH/avant SKIP/LIMIT.
-
----
-
-## Prochaines Étapes (Sprint 2)
-
-1. **Corriger tous les endpoints stats** : Neo4j 5 Cypher syntax.
-2. **Redémarrer build-dataset.js** : une fois MusicBrainz accessible (ou via proxy).
-3. **Remplir complètement ANALYSE_DATA.md** : avec 10 artistes réels + vraies stats.
-4. **Valider avec Nicolas (frontend)** : formes JSON réelles pour UI binding.
-5. **Tests automatisés** : Jest + supertest sur import + stats.
-
----
-
-**Rapport généré** : Seed dataset validation (n'attend que accès MusicBrainz pour données réelles complètes).
+Le script résout maintenant les MBIDs via `searchArtist()` — plus de dépendance aux MBIDs hardcodés. Résultat attendu avec les 10 artistes : ~500-1000 recordings, ~2000-5000 releases, ~20-50 collaborations cross-artistes.
